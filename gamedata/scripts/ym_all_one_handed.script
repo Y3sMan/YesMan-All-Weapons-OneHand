@@ -1,0 +1,377 @@
+--#region debug
+
+
+local function dbg_print(msg, ...)
+    if not ym_debug then return end
+    
+
+    ym_debug.set_modname("all one handed")
+    ym_debug.dbg_print(msg,...)
+end
+
+local function dbg_dump(o)
+    if not ym_debug then return end
+
+    return ym_debug.dbg_dump(o)
+end
+
+local function newline()
+    if not ym_debug then return end
+    ym_debug.dbg_newline()
+end
+--#endregion
+
+if not grok_bo_enhanced_recoil or not grok_bo_enhanced_recoil.modifier then
+    printf("!Enhanced Recoil Gold is not installed. Stopping Mod")
+    return
+end
+
+local idp            = round_idp
+local org_get_recoil = grok_bo_enhanced_recoil.get_weapon_recoil_gold
+local add_modifier = grok_bo_enhanced_recoil.add_modifier
+local remove_modifier = grok_bo_enhanced_recoil.remove_modifier
+local modifier = grok_bo_enhanced_recoil.modifier
+local mod_func = function(effect_power, wpn, wpn_fx)
+    dbg_print("mod func running")
+    return effect_power * 7
+end
+local ini = ini_file("ym_one_handed_wpns.ltx")
+
+section_blacklist = {}
+section_whitelist = {}
+kind_blacklist = {}
+kind_whitelist = {}
+
+
+
+
+-- TODO: Force lower of larger weapons?
+
+local detector_out = false
+local modded_wpns = {}
+local IsModded = false
+
+local function save_state(mdata) 
+    mdata.detector_out = detector_out
+end
+
+local function load_state(mdata) 
+    detector_out = mdata.detector_out or false
+end
+
+local function load_settings()
+    newline()
+    dbg_print("load_settings")
+    kind_whitelist = {}
+    kind_blacklist = {}
+    section_blacklist = {}
+    section_whitelist = {}
+
+	-- local detector = db.actor:active_detector()
+    -- local section = detector:section()
+    -- local kind = ini_sys:r_string_ex(section,"kind") or "unknown"
+	-- local wep = db.actor:active_item()
+
+    -- detector_out = kind == "i_device" and not wep and db.actor:active_detector()
+    detector_out = db.actor:active_detector() or false
+    dbg_print("detector_out = %s", detector_out)
+
+    -- Section 
+    local n = ini:line_count("section_blacklist")
+    for i = 0, n-1 do
+        local result, sec = ini:r_line_ex("section_blacklist")
+        if sec then
+            section_blacklist[sec] = true
+        end
+    end
+
+    n = ini:line_count("section_whitelist")
+    for i = 0, n-1 do
+        local result, sec = ini:r_line_ex("section_whitelist")
+        if sec then
+            section_whitelist[sec] = true
+        end
+    end
+
+    -- Kind
+    n = ini:line_count("kind_blacklist")
+    for i = 0, n-1 do
+        local result, kind = ini:r_line_ex("kind_blacklist")
+        dbg_print("kind = %s", kind)
+        if kind then
+            kind_blacklist[kind] = true
+        end
+    end
+
+    n = ini:line_count("kind_whitelist")
+    for i = 0, n-1 do
+        local result, kind = ini:r_line_ex("kind_whitelist")
+        if kind then
+            kind_whitelist[kind] = true
+        end
+    end
+end
+
+
+local function actor_on_first_update()
+    load_settings()
+    -- dbg_print("key_bindings = %s", dbg_dump(key_bindings))
+end
+
+--#region mod recoil
+-- local function actor_on_weapon_before_fire(flags)
+--     dbg_print("actor_on_weapon_before_fire")
+
+-- 	if not db.actor then return end
+
+-- 	local wpn   = db.actor:active_item()
+-- 	if not wpn then return end
+
+-- 	if game.actor_weapon_lowered() == true then return end
+
+--     local sec_p = ini_sys:r_string_ex(wpn:section(), "parent_section") or wpn:section()
+
+
+--     -- if regular one-handed weapon (knife or pistol)
+--     -- then ignore it
+--     local wpn_cls = wpn:clsid()
+--     if
+--         (IsPistol(nil, wpn_cls) or
+--             (IsWeapon(nil, wpn_cls) and wpn_cls == clsid.wpn_knife_s)) or
+--             (IsBolt(nil, wpn_cls))
+
+--      then 
+--         remove_modifier(mod_func)
+--         IsModded = false
+--         -- modded_wpns[sec_p] = nil 
+--         return
+--     end
+
+--     local detector_out =  db.actor:active_detector() and true or false
+--     dbg_print("active_detector = %s", detector_out)
+
+
+--     if detector_out then 
+--         -- if not modded_wpns[sec_p] then
+--         if not IsModded then
+--             add_modifier(mod_func)
+--             IsModded = true 
+--             -- modded_wpns[sec_p] = true
+--         end
+--     else
+--         remove_modifier(mod_func)
+--         IsModded = false
+--         -- modded_wpns[sec_p] = nil
+--     end
+
+
+
+-- end
+
+--#endregion
+
+
+-- TODO: disable hipfire but allow aiming with device
+-- TODO: mcm for many options
+
+function on_detector_start(anm_table, item)
+	if not item then return end
+    local section = item:section() -- section here is the weapon/detector
+    local kind = ini_sys:r_string_ex(section,"kind") or "unknown"
+    local anm_name = anm_table.anm_name
+
+    newline()
+    dbg_print("actor_on_hud_animation_play")
+
+    -- dbg_print("anm_name = %s", anm_name)
+    dbg_print("section = %s", section)
+    dbg_print("kind = %s", kind)
+    kind = tostring(kind)
+    
+    dbg_print("anm_table = %s", dbg_dump(anm_table))
+    dbg_print("kind_blacklist = %s", dbg_dump(kind_blacklist))
+    dbg_print("kind_whitelist[kind] = %s, kind_blacklist[kind] = %s", kind_whitelist[kind], kind_blacklist[kind])
+    dbg_print("section_whitelist[section] = %s, section_blacklist[section] = %s", section_whitelist[section], section_blacklist[section])
+    -- if (kind == "i_device") then 
+    if (kind_blacklist[kind] and not kind_whitelist[kind]) then
+        -- if not kind_whitelist[kind]
+        if ( (not string.find(anm_name, "^anm_show") and (not string.find(anm_name, "^anm_hide")))) then
+            goto continue
+        end
+
+
+
+        
+        if string.find(anm_name, "^anm_show") then
+            detector_out = true
+        elseif string.find(anm_name, "^anm_hide") then
+            detector_out = false
+        end
+
+        if section_blacklist[section] then detector_out = true end
+        if section_whitelist[section] then detector_out = false end
+    end
+
+    -- Pull out device
+    -- if kind_blacklist[kind] and not kind_whitelist[kind] then
+    --     dbg_print("on kind_blacklist or not on kind_whitelist")
+    --     if not section_whitelist[section] or section_blacklist[section] then
+    --         dbg_print("not on section_whitelist or on section_blacklist")
+    --         if (string.find(anm_name, "^anm_show") ) then
+    --             dbg_print("detector show")
+    --             detector_out = true
+    --         elseif (string.find(anm_name, "^anm_hide") ) then
+    --             dbg_print("detector hide")
+    --             detector_out = false 
+    --         end
+    --     else
+    --         dbg_print("on section_whitelist or not on section_blacklist")
+    --         detector_out = false
+    --     end
+    -- else
+    --     dbg_print("not on kind_blacklist or on kind_whitelist")
+    --     detector_out = false
+    -- end
+
+
+    ::continue::
+
+    game.actor_lower_weapon(detector_out)
+    dbg_print("detector_out = %s", detector_out)
+end
+
+
+
+local function actor_on_weapon_raise(wpn)
+    if not wpn then return end
+    newline()
+    dbg_print("actor_on_weapon_raise, wpn = %s", wpn)
+    if detector_out then return end
+end
+
+local function actor_on_weapon_lower(wpn)
+    if not wpn then return end
+    newline()
+    dbg_print("actor_on_weapon_lower, wpn = %s", wpn)
+end
+
+local function on_before_key_press(key, bind, dis, flags)
+    -- dbg_print("flags = %s", dbg_dump(flags))
+    -- dbg_print("kWPN_FIRE = %s, kWPN_ZOOM = %s", key_bindings.kWPN_FIRE, key_bindings.kWPN_ZOOM)
+
+
+    -- dbg_print("bind == kWPN_FIRE = %s, bind == kWPN_ZOOM = %s", bind == key_bindings.kWPN_FIRE, bind == key_bindings.kWPN_ZOOM) 
+    if ((bind == key_bindings.kWPN_FIRE) or (bind == key_bindings.kWPN_ZOOM)) then
+        newline()
+        dbg_print("on_before_key_press")
+        dbg_print("detector_out = %s", detector_out)
+
+        if detector_out then flags.ret_value = false end
+    end
+    
+end
+
+local function on_key_press(key)
+    newline()
+    dbg_print("on_key_press")
+	local bind = dik_to_bind(key)
+
+    dbg_print("key = %s", key)
+    dbg_print("bind = %s", bind)
+    -- TODO: add hide quick detector on combat and weapon is out
+    -- if uni_anim_detectors and bind == key_bindings.kNIGHT_VISION and db.actor:active_detector() then
+    --     uni_anim_detectors.force_quick = true
+    --     return
+    -- end
+    
+    -- if (bind == key_bindings.)
+
+
+--     dbg_print("key_bindings[key] = %s", key_bindings[key])
+--     if not detector_out then goto continue end
+
+--     if ((bind == 30) or (bind == 31))
+--     -- if (bind == key_bindings.kWPN_FIRE)
+--     then
+--         dbg_print("stopping fire or zoom")
+--         return
+--     end
+
+--     ::continue::
+end
+
+-- local function on_key_release(key)
+--     -- newline()
+--     -- dbg_print("on_key_release")
+
+-- 	-- local bind = dik_to_bind(key)
+--     -- dbg_print("bind = %s", bind)
+--     -- if not detector_out then goto continue end
+
+--     -- if ((bind == 51) or (bind == 46))
+--     -- then
+--     --     dbg_print("stopping fire or zoom")
+--     --     return
+--     -- end
+
+--     -- ::continue::
+-- end
+
+
+-- local function on_key_hold(key)
+--     -- newline()
+--     -- dbg_print("on_key_hold")
+
+-- 	-- local bind = dik_to_bind(key)
+--     -- dbg_print("bind = %s", bind)
+--     -- if not detector_out then goto continue end
+
+--     -- if ((bind == 51) or (bind == 46))
+--     -- then
+--     --     dbg_print("stopping fire or zoom")
+--     --     return
+--     -- end
+
+--     -- ::continue::
+-- end
+
+-- local function actor_on_weapon_zoom_in()
+--     if detector_out then return end
+    
+-- end
+
+
+-- local function actor_on_weapon_before_fire(flags)
+--     dbg_print("actor_on_weapon_before_fire")
+--    if detector_out then return end 
+-- end
+
+local function actor_item_to_slot(obj)
+    dbg_print("actor_item_to_slot")
+	detector_out = db.actor:active_detector()
+    game.actor_lower_weapon(detector_out)
+end
+
+local function on_option_change()
+    load_settings()
+    
+end
+
+
+function on_game_start()
+    RegisterScriptCallback("save_state",save_state)
+    RegisterScriptCallback("load_state",load_state)
+    RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+    -- RegisterScriptCallback("actor_on_hud_animation_end", on_detector_end)
+	-- RegisterScriptCallback("actor_on_weapon_before_fire", actor_on_weapon_before_fire)
+	RegisterScriptCallback("actor_on_weapon_raise",actor_on_weapon_raise)
+	RegisterScriptCallback("actor_on_weapon_lower",actor_on_weapon_lower)
+    RegisterScriptCallback("actor_on_hud_animation_play", on_detector_start)
+    RegisterScriptCallback("on_key_press", on_key_press)
+    -- RegisterScriptCallback("on_key_release", on_key_release)
+    -- RegisterScriptCallback("on_key_hold", on_key_hold)
+    -- RegisterScriptCallback("actor_on_weapon_zoom_in", actor_on_weapon_zoom_in)
+    RegisterScriptCallback("on_before_key_press", on_before_key_press)
+    RegisterScriptCallback("actor_item_to_slot", actor_item_to_slot)
+    RegisterScriptCallback("on_option_change", on_option_change)
+end
