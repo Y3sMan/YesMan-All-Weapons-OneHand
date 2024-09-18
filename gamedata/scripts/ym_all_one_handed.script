@@ -21,6 +21,10 @@ local function newline()
 end
 --#endregion
 
+
+--#region Variables
+    --#region Imports
+
 if not grok_bo_enhanced_recoil or not grok_bo_enhanced_recoil.modifier then
     printf("!Enhanced Recoil Gold is not installed. Stopping Mod")
     return
@@ -31,6 +35,7 @@ local org_get_recoil = grok_bo_enhanced_recoil.get_weapon_recoil_gold
 local add_modifier = grok_bo_enhanced_recoil.add_modifier
 local remove_modifier = grok_bo_enhanced_recoil.remove_modifier
 local modifier = grok_bo_enhanced_recoil.modifier
+local ini = ini_file("ym_one_handed_wpns.ltx")
     --#endregion
 
 device_sec_blacklist = {}
@@ -52,11 +57,19 @@ local mod_func        = function(effect_power, wpn, wpn_fx)
     return effect_power * 7
 end
 
+-- MCM options
+local RECOIL_DEBUFF = false
+local ALLOW_HIPFIRE = false
+local ALLOW_ZOOM = true
+
+-- State variables
 local is_zoomed = false -- player is ADS-ing
 local is_raised = false -- weapon is raised (secondary position, unable to fire)
 local detector_out = false -- detector is out, 'nuff said; well, the appropiate device is out, one on a blacklist in the ini
 local wpn_out = 4 
 local IsModded = false
+--#endregion
+
 
 local function save_state(mdata) 
     mdata.detector_out = detector_out
@@ -177,46 +190,63 @@ local function actor_on_first_update()
     -- dbg_print("key_bindings = %s", dbg_dump(key_bindings))
 end
 
+local function on_option_change()
+    load_settings()
+end
+
 --#region mod recoil
--- local function actor_on_weapon_before_fire(flags)
---     dbg_print("actor_on_weapon_before_fire")
+local function actor_on_weapon_before_fire(flags)
+    dbg_print("actor_on_weapon_before_fire")
+    if  (not RECOIL_DEBUFF)  then return end -- recoil debuff is not enabled
 
--- 	if not db.actor then return end
+	if not db.actor then return end
 
--- 	local wpn   = db.actor:active_item()
--- 	if not wpn then return end
+	local wpn   = db.actor:active_item()
+	if not wpn then return end
 
--- 	if game.actor_weapon_lowered() == true then return end
+	if game.actor_weapon_lowered() == true then return end
 
---     local sec_p = ini_sys:r_string_ex(wpn:section(), "parent_section") or wpn:section()
+    local sec_p = ini_sys:r_string_ex(wpn:section(), "parent_section") or wpn:section()
 
 
+    -- if regular one-handed weapon (knife or pistol)
+    -- remove the recoil mod func
+    -- and stop
+    local wpn_cls = wpn:clsid()
+    dbg_print("wpn_cls = %s", wpn_cls)
+    if
+        (IsPistol(nil, wpn_cls) or
+            (IsWeapon(nil, wpn_cls) and wpn_cls == clsid.wpn_knife_s)) or
         (IsBolt(nil, wpn_cls)) or
         (wpn_out ~= 2) or     -- 2 and 3 are the only blacklist options with recoil debuffs
         (wpn_out ~= 3)
      then 
         remove_modifier(mod_func)
+        IsModded = false
+        -- modded_wpns[sec_p] = nil 
+        return
+    end
 
---     local detector_out =  db.actor:active_detector() and true or false
---     dbg_print("active_detector = %s", detector_out)
-
-
---     if detector_out then 
---         -- if not modded_wpns[sec_p] then
---         if not IsModded then
---             add_modifier(mod_func)
---             IsModded = true 
---             -- modded_wpns[sec_p] = true
---         end
---     else
---         remove_modifier(mod_func)
---         IsModded = false
---         -- modded_wpns[sec_p] = nil
---     end
+    local detector_out =  db.actor:active_detector() and true or false
+    dbg_print("active_detector = %s", detector_out)
 
 
+    if detector_out then 
+        -- if not modded_wpns[sec_p] then
+        if not IsModded then
+            add_modifier(mod_func)
+            IsModded = true 
+            -- modded_wpns[sec_p] = true
+        end
+    else
+        remove_modifier(mod_func)
+        IsModded = false
+        -- modded_wpns[sec_p] = nil
+    end
 
--- end
+
+
+end
 
 --#endregion
 
@@ -242,13 +272,34 @@ function on_detector_start(anm_table, item)
 
 
     local section = item:section() -- section here is the weapon/detector
-    local kind = ini_sys:r_string_ex(section,"kind") or "unknown"
-    local anm_name = anm_table.anm_name
+    local kind = ini_sys:r_string_ex(section,"kind") or "unknown" -- "kind" is usually "i_device"
+    local anm_name = anm_table.anm_name -- Only care about "anm_hide.*" or "anm_show.*"
 
-    newline()
-    dbg_print("actor_on_hud_animation_play")
+    -- Ignore all animations except the hide and show ones
+    if ((not string.find(anm_name, "^anm_show") and (not string.find(anm_name, "^anm_hide")))) then
+        -- goto continue
+        return
+    end
+    
+
+    -- if IsWeapon(item) then goto weapon else goto device end
+    -- kind = tostring(kind)
+
 
     -- dbg_print("anm_name = %s", anm_name)
+    -- dbg_print("section = %s", section)
+    -- dbg_print("kind = %s", kind)
+
+    
+    -- dbg_print("anm_table = %s", dbg_dump(anm_table))
+    -- dbg_print("kind_blacklist = %s", dbg_dump(kind_blacklist))
+    -- dbg_print("kind_whitelist = %s", dbg_dump(kind_whitelist))
+    -- dbg_print("section_blacklist = %s", dbg_dump(section_blacklist))
+    -- dbg_print("section_whitelist = %s", dbg_dump(section_whitelist))
+    -- dbg_print("kind_whitelist[kind] = %s, kind_blacklist[kind] = %s", kind_whitelist[kind], kind_blacklist[kind])
+    -- dbg_print("section_whitelist[section] = %s, section_blacklist[section] = %s", section_whitelist[section], section_blacklist[section])
+
+    ::weapon::
 
     -- Grab equipped weapon
     local obj = db.actor:active_item()
@@ -290,7 +341,7 @@ function on_detector_start(anm_table, item)
     -- Device checks
     -- Check if current hud item is in the blacklists (i.e. the detectors are playing animations)
     if device_kind_blacklist[kind] or device_sec_blacklist[section] then
-            detector_out = true
+        detector_out = true
     end
 
     -- Whitelists take priority
@@ -400,7 +451,7 @@ local function actor_item_to_slot(obj)
 
     -- check if obj moved to/from device slot 
     if not IsItem("device", nil, obj) then return end
-    
+
 	detector_out = false
     wpn_out = 4
     remove_modifier(mod_func)
@@ -419,7 +470,7 @@ function on_game_start()
 	RegisterScriptCallback("actor_on_weapon_lower",actor_on_weapon_lower)
     RegisterScriptCallback("actor_on_hud_animation_play", on_detector_start)
     RegisterScriptCallback("on_key_press", on_key_press)
-    -- RegisterScriptCallback("on_key_release", on_key_release)
+    RegisterScriptCallback("on_key_release", on_key_release)
     -- RegisterScriptCallback("on_key_hold", on_key_hold)
     -- RegisterScriptCallback("actor_on_weapon_zoom_in", actor_on_weapon_zoom_in)
     RegisterScriptCallback("on_before_key_press", on_before_key_press)
