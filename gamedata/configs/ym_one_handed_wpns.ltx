@@ -1,10 +1,63 @@
-[section_blacklist]
+; Device lists
+[device_sec_blacklist]
 
-[section_whitelist]
+; whitelist always takes priority over
+; blacklist
+[device_sec_whitelist]
 device_glowstick
 device_flashlight
 
-[kind_blacklist]
+[device_kind_blacklist]
 i_device
 
-[kind_whitelist]
+[device_kind_whitelist]
+
+; Weapon Lists
+;; IMPORTANT
+; Weapons NEED to have "single_handed = 1" set in their config in order for mod to work
+
+; if Weapon is not in any lists, i.e. a mod weapon, it will default
+; to being whitelisted
+; Kinds as found in system.ltx
+;  w_base
+;  w_pistol
+;  w_shotgun
+;  w_smg
+;  w_rifle
+;  w_sniper
+;  w_explosive
+;  w_melee
+;  w_misc
+
+
+; Blacklist entries need an integer
+; 0     =   No hipfire or ADS-ing
+; 1     =   No hipfire but allow normal ADS
+; 2     =   No hipfire, ADS with recoil debuff
+; 3     =   Allow hipfire and ADS but with recoil debuff
+; Allow hipfire and ADS but without any recoil debuff is just the whitelist
+
+[wpn_sec_blacklist]
+wpn_remington700 = 2
+
+; whitelist always takes priority over blacklist
+; whitelist always defaults to "4"
+[wpn_sec_whitelist]
+bolt
+
+[wpn_kind_blacklist]
+w_shotgun = 0
+w_sniper = 0
+w_rifle = 3
+w_smg = 3
+
+[wpn_kind_whitelist]
+w_pistol
+w_knife
+w_misc
+w_explosive
+w_melee
+
+
+
+

@@ -31,24 +31,28 @@ local org_get_recoil = grok_bo_enhanced_recoil.get_weapon_recoil_gold
 local add_modifier = grok_bo_enhanced_recoil.add_modifier
 local remove_modifier = grok_bo_enhanced_recoil.remove_modifier
 local modifier = grok_bo_enhanced_recoil.modifier
-local mod_func = function(effect_power, wpn, wpn_fx)
+    --#endregion
+
+device_sec_blacklist = {}
+device_sec_whitelist = {}
+device_kind_blacklist = {}
+device_kind_whitelist = {}
+
+wpn_sec_blacklist = {}
+wpn_sec_whitelist = {}
+wpn_kind_blacklist = {}
+wpn_kind_whitelist = {}
+
+--[[ 
+    mod_func is a simple function to add to Enhanced Recoil Gold, modding the recoil of ALL weapons, doesn't 
+    matter which is out
+--]]
+local mod_func        = function(effect_power, wpn, wpn_fx)
     dbg_print("mod func running")
     return effect_power * 7
 end
-local ini = ini_file("ym_one_handed_wpns.ltx")
 
-section_blacklist = {}
-section_whitelist = {}
-kind_blacklist = {}
-kind_whitelist = {}
-
-
-
-
--- TODO: Force lower of larger weapons?
-
-local detector_out = false
-local modded_wpns = {}
+local wpn_out = 4 
 local IsModded = false
 
 local function save_state(mdata) 
@@ -62,10 +66,16 @@ end
 local function load_settings()
     newline()
     dbg_print("load_settings")
-    kind_whitelist = {}
-    kind_blacklist = {}
-    section_blacklist = {}
-    section_whitelist = {}
+    device_kind_whitelist = {}
+    device_kind_blacklist = {}
+    device_sec_blacklist = {}
+    device_sec_whitelist = {}
+
+    wpn_kind_whitelist = {}
+    wpn_kind_blacklist = {}
+    wpn_sec_blacklist = {}
+    wpn_sec_whitelist = {}
+
 
 	-- local detector = db.actor:active_detector()
     -- local section = detector:section()
@@ -76,41 +86,87 @@ local function load_settings()
     detector_out = db.actor:active_detector() or false
     dbg_print("detector_out = %s", detector_out)
 
+
+    --#region Device lists
     -- Section 
-    local n = ini:line_count("section_blacklist")
+    local n = ini:line_count("device_sec_blacklist")
     for i = 0, n-1 do
-        local result, sec = ini:r_line_ex("section_blacklist")
+        local result, sec = ini:r_line_ex("device_sec_blacklist")
         if sec then
-            section_blacklist[sec] = true
+            device_sec_blacklist[sec] = true
         end
     end
 
-    n = ini:line_count("section_whitelist")
+    n = ini:line_count("device_sec_whitelist")
     for i = 0, n-1 do
-        local result, sec = ini:r_line_ex("section_whitelist")
+        local result, sec = ini:r_line_ex("device_sec_whitelist")
         if sec then
-            section_whitelist[sec] = true
+            device_sec_whitelist[sec] = true
         end
     end
 
     -- Kind
-    n = ini:line_count("kind_blacklist")
+    n = ini:line_count("device_kind_blacklist")
     for i = 0, n-1 do
-        local result, kind = ini:r_line_ex("kind_blacklist")
-        dbg_print("kind = %s", kind)
+        local result, kind = ini:r_line_ex("device_kind_blacklist")
+        dbg_print("device_kind = %s", kind)
         if kind then
-            kind_blacklist[kind] = true
+            device_kind_blacklist[kind] = true
         end
     end
 
-    n = ini:line_count("kind_whitelist")
+    n = ini:line_count("device_kind_whitelist")
     for i = 0, n-1 do
-        local result, kind = ini:r_line_ex("kind_whitelist")
+        local result, kind = ini:r_line_ex("device_kind_whitelist")
         if kind then
-            kind_whitelist[kind] = true
+            device_kind_whitelist[kind] = true
         end
     end
+    --#endregion
+
+    --#region Weapon lists
+    -- Section 
+    local n = ini:line_count("wpn_sec_blacklist")
+    for i = 0, n-1 do
+        local result, sec, i = ini:r_line_ex("wpn_sec_blacklist",i, "", "")
+        if sec then
+            i = i or 3
+            wpn_sec_blacklist[sec] = i 
+        end
+    end
+
+    n = ini:line_count("wpn_sec_whitelist")
+    for i = 0, n-1 do
+        local result, sec = ini:r_line_ex("wpn_sec_whitelist")
+        if sec then
+            wpn_sec_whitelist[sec] = true
+        end
+    end
+
+    -- Kind
+    n = ini:line_count("wpn_kind_blacklist")
+    for i = 0, n-1 do
+        local result, kind, i = ini:r_line_ex("wpn_kind_blacklist",i, "", "")
+        dbg_print("wpn_kind = %s", kind)
+        if kind then
+            i = i or 3 -- default to allow hipfire and ADS but with recoil debuff
+            wpn_kind_blacklist[kind] = i 
+        end
+    end
+
+    n = ini:line_count("wpn_kind_whitelist")
+    for i = 0, n-1 do
+        local result, kind = ini:r_line_ex("wpn_kind_whitelist")
+        if kind then
+            wpn_kind_whitelist[kind] = true
+        end
+    end
+    
+
+
+    --#endregion
 end
+
 
 
 local function actor_on_first_update()
@@ -132,20 +188,11 @@ end
 --     local sec_p = ini_sys:r_string_ex(wpn:section(), "parent_section") or wpn:section()
 
 
---     -- if regular one-handed weapon (knife or pistol)
---     -- then ignore it
---     local wpn_cls = wpn:clsid()
---     if
---         (IsPistol(nil, wpn_cls) or
---             (IsWeapon(nil, wpn_cls) and wpn_cls == clsid.wpn_knife_s)) or
---             (IsBolt(nil, wpn_cls))
-
---      then 
---         remove_modifier(mod_func)
---         IsModded = false
---         -- modded_wpns[sec_p] = nil 
---         return
---     end
+        (IsBolt(nil, wpn_cls)) or
+        (wpn_out ~= 2) or     -- 2 and 3 are the only blacklist options with recoil debuffs
+        (wpn_out ~= 3)
+     then 
+        remove_modifier(mod_func)
 
 --     local detector_out =  db.actor:active_detector() and true or false
 --     dbg_print("active_detector = %s", detector_out)
@@ -176,6 +223,21 @@ end
 
 function on_detector_start(anm_table, item)
 	if not item then return end
+
+    newline()
+    dbg_print("on_detector_start")
+
+    device_kind_blacklist = device_kind_blacklist
+    device_kind_whitelist = device_kind_whitelist
+    device_sec_blacklist = device_sec_blacklist
+    device_sec_whitelist = device_sec_whitelist
+
+    wpn_kind_blacklist = wpn_kind_blacklist
+    wpn_kind_whitelist = wpn_kind_whitelist
+    wpn_sec_blacklist = wpn_sec_blacklist
+    wpn_sec_whitelist = wpn_sec_whitelist
+
+
     local section = item:section() -- section here is the weapon/detector
     local kind = ini_sys:r_string_ex(section,"kind") or "unknown"
     local anm_name = anm_table.anm_name
@@ -184,60 +246,65 @@ function on_detector_start(anm_table, item)
     dbg_print("actor_on_hud_animation_play")
 
     -- dbg_print("anm_name = %s", anm_name)
-    dbg_print("section = %s", section)
-    dbg_print("kind = %s", kind)
-    kind = tostring(kind)
-    
-    dbg_print("anm_table = %s", dbg_dump(anm_table))
-    dbg_print("kind_blacklist = %s", dbg_dump(kind_blacklist))
-    dbg_print("kind_whitelist[kind] = %s, kind_blacklist[kind] = %s", kind_whitelist[kind], kind_blacklist[kind])
-    dbg_print("section_whitelist[section] = %s, section_blacklist[section] = %s", section_whitelist[section], section_blacklist[section])
-    -- if (kind == "i_device") then 
-    if (kind_blacklist[kind] and not kind_whitelist[kind]) then
-        -- if not kind_whitelist[kind]
-        if ( (not string.find(anm_name, "^anm_show") and (not string.find(anm_name, "^anm_hide")))) then
-            goto continue
-        end
 
-
-
-        
-        if string.find(anm_name, "^anm_show") then
-            detector_out = true
-        elseif string.find(anm_name, "^anm_hide") then
-            detector_out = false
-        end
-
-        if section_blacklist[section] then detector_out = true end
-        if section_whitelist[section] then detector_out = false end
+    -- Grab equipped weapon
+    local obj = db.actor:active_item()
+    local wpn = nil
+    local wpn_kind = nil
+    local wpn_sec = nil
+    if (obj) then
+        wpn = obj
+        wpn_sec = wpn:section()
+        wpn_kind = ini_sys:r_string_ex(obj:section(),"kind") or "unknown" -- "kind" is usually "i_device"
     end
 
-    -- Pull out device
-    -- if kind_blacklist[kind] and not kind_whitelist[kind] then
-    --     dbg_print("on kind_blacklist or not on kind_whitelist")
-    --     if not section_whitelist[section] or section_blacklist[section] then
-    --         dbg_print("not on section_whitelist or on section_blacklist")
-    --         if (string.find(anm_name, "^anm_show") ) then
-    --             dbg_print("detector show")
-    --             detector_out = true
-    --         elseif (string.find(anm_name, "^anm_hide") ) then
-    --             dbg_print("detector hide")
-    --             detector_out = false 
-    --         end
-    --     else
-    --         dbg_print("on section_whitelist or not on section_blacklist")
-    --         detector_out = false
-    --     end
-    -- else
-    --     dbg_print("not on kind_blacklist or on kind_whitelist")
-    --     detector_out = false
-    -- end
+    dbg_print("wpn = %s", wpn)
+    dbg_print("wpn_kind = %s", wpn_kind)
 
+
+    -- Weapon checks
+    if wpn_kind and wpn_kind_blacklist[wpn_kind] then
+        -- Section blacklist takes priority over kind blacklist
+        if wpn_sec_blacklist[wpn_sec] then
+            wpn_out = wpn_sec_blacklist[wpn_sec]
+        else
+            wpn_out = wpn_kind_blacklist[wpn_kind]
+        end
+    end
+
+    -- Whitelists take priority
+    -- if there are duplicates on the blacklist and whitelist, the whitelist wins out
+    if wpn_kind and (wpn_kind_whitelist[wpn_kind] or wpn_sec_whitelist[wpn_sec]) then
+        wpn_out = 4
+    end
+
+
+    ::device::
+
+
+
+
+    -- Device checks
+    -- Check if current hud item is in the blacklists (i.e. the detectors are playing animations)
+    if device_kind_blacklist[kind] or device_sec_blacklist[section] then
+            detector_out = true
+    end
+
+    -- Whitelists take priority
+    -- if there are duplicates on the blacklist and whitelist, the whitelist wins out
+    if device_kind_whitelist[kind] or device_sec_whitelist[section] then
+        detector_out = false
+    end
 
     ::continue::
 
-    game.actor_lower_weapon(detector_out)
+    dbg_print("ALLOW_HIPFIRE = %s, about_to_zoom = %s",ALLOW_HIPFIRE, is_zoomed)
+    -- if not ALLOW_HIPFIRE and not is_zoomed then game.actor_lower_weapon(detector_out) end
+    if ((not ALLOW_HIPFIRE) and (not is_zoomed) and detector_out and (wpn_out < 3)) then
+        game.actor_lower_weapon(true)
+    end
     dbg_print("detector_out = %s", detector_out)
+    dbg_print("wpn_out = %s", wpn_out)
 end
 
 
@@ -355,6 +422,7 @@ end
 local function on_option_change()
     load_settings()
     
+    wpn_out = 4
 end
 
 
