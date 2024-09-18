@@ -275,18 +275,19 @@ function on_detector_start(anm_table, item)
     local kind = ini_sys:r_string_ex(section,"kind") or "unknown" -- "kind" is usually "i_device"
     local anm_name = anm_table.anm_name -- Only care about "anm_hide.*" or "anm_show.*"
 
-    -- Ignore all animations except the hide and show ones
-    if ((not string.find(anm_name, "^anm_show") and (not string.find(anm_name, "^anm_hide")))) then
-        -- goto continue
-        return
-    end
-    
+    local obj = db.actor:active_item()
+    local wpn = nil
+    local wpn_kind = nil
+    local wpn_sec = nil
+
+
+    local isHide = string.find(anm_name, "^anm_hide") and true or false
 
     -- if IsWeapon(item) then goto weapon else goto device end
     -- kind = tostring(kind)
 
 
-    -- dbg_print("anm_name = %s", anm_name)
+    dbg_print("anm_name = %s", anm_name)
     -- dbg_print("section = %s", section)
     -- dbg_print("kind = %s", kind)
 
@@ -299,18 +300,21 @@ function on_detector_start(anm_table, item)
     -- dbg_print("kind_whitelist[kind] = %s, kind_blacklist[kind] = %s", kind_whitelist[kind], kind_blacklist[kind])
     -- dbg_print("section_whitelist[section] = %s, section_blacklist[section] = %s", section_whitelist[section], section_blacklist[section])
 
-    ::weapon::
 
     -- Grab equipped weapon
-    local obj = db.actor:active_item()
-    local wpn = nil
-    local wpn_kind = nil
-    local wpn_sec = nil
     if (obj) then
         wpn = obj
         wpn_sec = wpn:section()
         wpn_kind = ini_sys:r_string_ex(obj:section(),"kind") or "unknown" -- "kind" is usually "i_device"
     end
+
+    -- Ignore all animations except the hide and show ones
+    if ((not string.find(anm_name, "^anm_show") and (not string.find(anm_name, "^anm_hide"))) and (not IsWeapon(item))) then
+        dbg_print("not hide or show anim")
+        goto continue
+        -- return
+    end
+    
 
     dbg_print("wpn = %s", wpn)
     dbg_print("wpn_kind = %s", wpn_kind)
@@ -319,21 +323,20 @@ function on_detector_start(anm_table, item)
     -- Weapon checks
     if wpn_kind and wpn_kind_blacklist[wpn_kind] then
         -- Section blacklist takes priority over kind blacklist
-        if wpn_sec_blacklist[wpn_sec] then
-            wpn_out = wpn_sec_blacklist[wpn_sec]
+        if wpn_sec and wpn_sec_blacklist[wpn_sec] then
+            wpn_out = tonumber(wpn_sec_blacklist[wpn_sec]) or 4
         else
-            wpn_out = wpn_kind_blacklist[wpn_kind]
+            wpn_out = tonumber(wpn_kind_blacklist[wpn_kind]) or 4
         end
     end
 
     -- Whitelists take priority
     -- if there are duplicates on the blacklist and whitelist, the whitelist wins out
-    if wpn_kind and (wpn_kind_whitelist[wpn_kind] or wpn_sec_whitelist[wpn_sec]) then
+    if wpn_kind and (wpn_kind_whitelist[wpn_kind] or (wpn_sec and wpn_sec_whitelist[wpn_sec])) then
         wpn_out = 4
     end
 
 
-    ::device::
 
 
 
@@ -350,12 +353,26 @@ function on_detector_start(anm_table, item)
         detector_out = false
     end
 
+
+
+    -- hide wpn or device, reset everything
+    if isHide then
+        detector_out = false
+        wpn_kind = 4
+        game.actor_lower_weapon(false)
+    end
+
     ::continue::
+
+    if not detector_out then wpn_out = 4 end
 
     dbg_print("ALLOW_HIPFIRE = %s, about_to_zoom = %s",ALLOW_HIPFIRE, is_zoomed)
     -- if not ALLOW_HIPFIRE and not is_zoomed then game.actor_lower_weapon(detector_out) end
-    if ((not ALLOW_HIPFIRE) and (not is_zoomed) and detector_out and (wpn_out < 3)) then
-        game.actor_lower_weapon(true)
+    dbg_print("wpn_out = %s", wpn_out)
+    if ((not ALLOW_HIPFIRE) and (not is_zoomed) ) then
+        if detector_out or wpn_out < 3 then
+            game.actor_lower_weapon(true)
+        end
     end
     dbg_print("detector_out = %s", detector_out)
     dbg_print("wpn_out = %s", wpn_out)
@@ -393,20 +410,20 @@ local function on_before_key_press(key, bind, dis, flags)
         dbg_print("detector_out = %s", detector_out)
 
         -- Basically, gun gets to act normally, aim and shoot or whatever
-        if ALLOW_HIPFIRE then return end
+        if (ALLOW_HIPFIRE and wpn_out >= 3) then return end
     end
 
     -- Prevent shooting 
     if (bind == key_bindings.kWPN_FIRE) then
         -- weapon is raised and hipfire is disabled and you are not aiming down sights
         -- prevent shooting
-        if ( is_raised and (not ALLOW_HIPFIRE) and (not is_zoomed)) then
+        if ( is_raised and (not ALLOW_HIPFIRE) and (not is_zoomed) and (wpn_out < 3)) then
             flags.ret_value = false
         end
     -- Prevent aiming down sights
     elseif (bind == key_bindings.kWPN_ZOOM) then
         -- Set flag stating player is ADS-ing currently
-        if ALLOW_ZOOM then
+        if (ALLOW_ZOOM and (wpn_out >= 1)) then
             is_zoomed = true
         -- Prevent ADS-ing
         else
