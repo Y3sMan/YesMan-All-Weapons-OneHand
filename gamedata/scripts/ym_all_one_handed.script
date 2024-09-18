@@ -394,16 +394,18 @@ end
 --    if detector_out then return end 
 -- end
 
+-- When something is equipped to/from device slot, reset weapon state (raised)
 local function actor_item_to_slot(obj)
     dbg_print("actor_item_to_slot")
-	detector_out = db.actor:active_detector()
-    game.actor_lower_weapon(detector_out)
-end
 
-local function on_option_change()
-    load_settings()
+    -- check if obj moved to/from device slot 
+    if not IsItem("device", nil, obj) then return end
     
+	detector_out = false
     wpn_out = 4
+    remove_modifier(mod_func)
+    IsModded = false
+    game.actor_lower_weapon(false)
 end
 
 
