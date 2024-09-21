@@ -343,15 +343,15 @@ function on_detector_start(anm_table, item)
         if detector_out then 
             if ((wpn_kind and wpn_kind_blacklist[wpn_kind]) or (wpn_sec and wpn_sec_blacklist[wpn_sec])) then
                 if wpn_sec_blacklist[wpn_sec] then
-            wpn_out = tonumber(wpn_sec_blacklist[wpn_sec]) or 4
-        else
-            wpn_out = tonumber(wpn_kind_blacklist[wpn_kind]) or 4
-        end
-    end
+                    wpn_out = tonumber(wpn_sec_blacklist[wpn_sec]) or 4
+                else    
+                    wpn_out = tonumber(wpn_kind_blacklist[wpn_kind]) or 4
+                end
+            end
 
             if (wpn_sec_whitelist[wpn_kind] or wpn_sec_whitelist[wpn_sec]) then
-        wpn_out = 4
-    end
+                wpn_out = 4
+            end
         end
 
 
