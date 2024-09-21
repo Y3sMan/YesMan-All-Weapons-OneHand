@@ -57,9 +57,14 @@ wpn_kind_whitelist = {}
 local RECOIL_DEBUFF = true
 local ALLOW_HIPFIRE = true
 local ALLOW_ZOOM = true
+-- the higher the number, the higher the recoil is affected
+-- At 7, the recoil pattern path length is about doubled, for me
+local RECOIL_DEBUFF_INT = 7 
+
 
 local mod_func_hipfire        = function(effect_power, wpn, wpn_fx)
     dbg_print("mod func hipfire running")
+    return effect_power * RECOIL_DEBUFF_INT
 end
 
 local mod_func_ads        = function(effect_power, wpn, wpn_fx)
