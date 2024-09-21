@@ -432,7 +432,7 @@ local function on_before_key_press(key, bind, dis, flags)
     -- dbg_print("bind == kWPN_FIRE = %s, bind == kWPN_ZOOM = %s", bind == key_bindings.kWPN_FIRE, bind == key_bindings.kWPN_ZOOM) 
 
     -- If device is not even out, or hipfire is allowed, then stop 
-    if ((not detector_out) or ALLOW_HIPFIRE) then return end
+    if (not detector_out)  then return end
 
     -- Device IS out AND hipfire is DISALLOWED
     if ((bind == key_bindings.kWPN_FIRE) or (bind == key_bindings.kWPN_ZOOM)) then
@@ -440,21 +440,28 @@ local function on_before_key_press(key, bind, dis, flags)
         dbg_print("on_before_key_press")
         dbg_print("detector_out = %s", detector_out)
 
-        -- Basically, gun gets to act normally, aim and shoot or whatever
-        if (ALLOW_HIPFIRE and wpn_out >= 3) then return end
+        -- -- Basically, gun gets to act normally, aim and shoot or whatever
+        -- if (ALLOW_HIPFIRE and wpn_out >= 3) then return end
     end
 
     -- Prevent shooting 
     if (bind == key_bindings.kWPN_FIRE) then
+        dbg_print("is_zoomed = %s, ALLOW_HIPFIRE = %s, is_raised = %s", is_zoomed, ALLOW_HIPFIRE, is_raised)
+        if is_zoomed then return end -- if already ADS-ed
+        -- if ALLOW_HIPFIRE then return end -- if hipfire is enabled 
+        if not is_raised then return end -- if hipfire is enabled and allowed, basically
+        dbg_print("fire")
+
         -- weapon is raised and hipfire is disabled and you are not aiming down sights
         -- prevent shooting
-        if ( is_raised and (not ALLOW_HIPFIRE) and (not is_zoomed) and (wpn_out < 3)) then
+        if ((not ALLOW_HIPFIRE) or (wpn_out < 3)) then
             flags.ret_value = false
         end
     -- Prevent aiming down sights
     elseif (bind == key_bindings.kWPN_ZOOM) then
+        dbg_print("zoom")
         -- Set flag stating player is ADS-ing currently
-        if (ALLOW_ZOOM and (wpn_out >= 1)) then
+        if (ALLOW_ZOOM and (wpn_out > 0)) then
             is_zoomed = true
         -- Prevent ADS-ing
         else
