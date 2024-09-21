@@ -278,9 +278,9 @@ end
 
 function on_detector_start(anm_table, item)
 	if not item then return end
-
     newline()
     dbg_print("on_detector_start")
+
 
     device_kind_blacklist = device_kind_blacklist
     device_kind_whitelist = device_kind_whitelist
@@ -292,112 +292,100 @@ function on_detector_start(anm_table, item)
     wpn_sec_blacklist = wpn_sec_blacklist
     wpn_sec_whitelist = wpn_sec_whitelist
 
+    local anm_name = anm_table.anm_name -- Only care about "anm_hide.*" or "anm_show.*"
+
+    -- every animation update, keep the wpn lowered
+    -- if ((not string.find(anm_name, "^anm_show")) or (not string.find(anm_name, "^anm_hide"))) then
+    --     if raiseWpn then game.actor_lower_weapon(raiseWpn) end
+    --     return
+    -- end
 
     local section = item:section() -- section here is the weapon/detector
     local kind = ini_sys:r_string_ex(section,"kind") or "unknown" -- "kind" is usually "i_device"
-    local anm_name = anm_table.anm_name -- Only care about "anm_hide.*" or "anm_show.*"
-
-    local obj = db.actor:active_item()
-    local wpn = nil
-    local wpn_kind = nil
-    local wpn_sec = nil
-
-
     local isHide = string.find(anm_name, "^anm_hide") and true or false
+    local isShow = not isHide or false
 
-    -- if IsWeapon(item) then goto weapon else goto device end
-    -- kind = tostring(kind)
+	local wpn = db.actor:active_item()
+    local wpn_sec = nil
+    local wpn_kind = nil
 
-
-    dbg_print("anm_name = %s", anm_name)
-    -- dbg_print("section = %s", section)
-    -- dbg_print("kind = %s", kind)
-
-    
-    -- dbg_print("anm_table = %s", dbg_dump(anm_table))
-    -- dbg_print("kind_blacklist = %s", dbg_dump(kind_blacklist))
-    -- dbg_print("kind_whitelist = %s", dbg_dump(kind_whitelist))
-    -- dbg_print("section_blacklist = %s", dbg_dump(section_blacklist))
-    -- dbg_print("section_whitelist = %s", dbg_dump(section_whitelist))
-    -- dbg_print("kind_whitelist[kind] = %s, kind_blacklist[kind] = %s", kind_whitelist[kind], kind_blacklist[kind])
-    -- dbg_print("section_whitelist[section] = %s, section_blacklist[section] = %s", section_whitelist[section], section_blacklist[section])
-
-
-    -- Grab equipped weapon
-    if (obj) then
-        wpn = obj
+    dbg_print("wpn = %s", wpn and wpn:section() or false)
+    if not IsWeapon(wpn) then wpn = nil end
+    if wpn then
         wpn_sec = wpn:section()
-        wpn_kind = ini_sys:r_string_ex(obj:section(),"kind") or "unknown" -- "kind" is usually "i_device"
+        wpn_kind = ini_sys:r_string_ex(wpn_sec,"kind") or nil
     end
 
-    -- Ignore all animations except the hide and show ones
-    if ((not string.find(anm_name, "^anm_show") and (not string.find(anm_name, "^anm_hide"))) and (not IsWeapon(item))) then
-        dbg_print("not hide or show anim")
-        goto continue
-        -- return
-    end
-    
 
-    dbg_print("wpn = %s", wpn)
-    dbg_print("wpn_kind = %s", wpn_kind)
+    if isShow then
+        if ((kind == "i_device"))then 
+            detector_out = true
+        end
 
-
-    -- Weapon checks
-    if wpn_kind and wpn_kind_blacklist[wpn_kind] then
-        -- Section blacklist takes priority over kind blacklist
-        if wpn_sec and wpn_sec_blacklist[wpn_sec] then
+        if detector_out then 
+            if ((wpn_kind and wpn_kind_blacklist[wpn_kind]) or (wpn_sec and wpn_sec_blacklist[wpn_sec])) then
+                if wpn_sec_blacklist[wpn_sec] then
             wpn_out = tonumber(wpn_sec_blacklist[wpn_sec]) or 4
         else
             wpn_out = tonumber(wpn_kind_blacklist[wpn_kind]) or 4
         end
     end
 
-    -- Whitelists take priority
-    -- if there are duplicates on the blacklist and whitelist, the whitelist wins out
-    if wpn_kind and (wpn_kind_whitelist[wpn_kind] or (wpn_sec and wpn_sec_whitelist[wpn_sec])) then
+            if (wpn_sec_whitelist[wpn_kind] or wpn_sec_whitelist[wpn_sec]) then
         wpn_out = 4
     end
-
-
-
-
-
-
-    -- Device checks
-    -- Check if current hud item is in the blacklists (i.e. the detectors are playing animations)
-    if device_kind_blacklist[kind] or device_sec_blacklist[section] then
-        detector_out = true
-    end
-
-    -- Whitelists take priority
-    -- if there are duplicates on the blacklist and whitelist, the whitelist wins out
-    if device_kind_whitelist[kind] or device_sec_whitelist[section] then
-        detector_out = false
-    end
-
-
-
-    -- hide wpn or device, reset everything
-    if isHide then
-        detector_out = false
-        wpn_kind = 4
-        game.actor_lower_weapon(false)
-    end
-
-    ::continue::
-
-    if not detector_out then wpn_out = 4 end
-
-    dbg_print("ALLOW_HIPFIRE = %s, about_to_zoom = %s",ALLOW_HIPFIRE, is_zoomed)
-    -- if not ALLOW_HIPFIRE and not is_zoomed then game.actor_lower_weapon(detector_out) end
-    dbg_print("wpn_out = %s", wpn_out)
-    if ((not ALLOW_HIPFIRE) and (not is_zoomed) ) then
-        if detector_out or wpn_out < 3 then
-            game.actor_lower_weapon(true)
         end
+
+
+        -- if recoil debuff is disabled
+        if not RECOIL_DEBUFF then
+            -- no hipfire, ADS with recoil debuff
+            if (wpn_out == 2 ) then
+                wpn_out = 1 -- set to no hipfire, normal ADS
+            -- hipfire and ADS with recoil debuff
+            elseif (wpn_out == 3) then
+                wpn_out = 4 -- hipfire and ADS, no recoil debuff at all
+            end
+         end
     end
+
+
+
+    -- Either weapon or device hides
+    -- Reset
+    if isHide then
+        wpn_out = 4
+        detector_out = false
+        modWpn = false
+        remove_modifier(mod_func_hipfire)
+        IsModded = false
+        game.actor_lower_weapon(false)
+        return
+    end
+
     dbg_print("detector_out = %s", detector_out)
     dbg_print("wpn_out = %s", wpn_out)
+
+    -- Add recoil mod
+    if (( (wpn_out == 2) or (wpn_out == 3)) and RECOIL_DEBUFF) then
+        modWpn = true
+        if not IsModded then
+            add_modifier(mod_func_hipfire)
+            IsModded = true
+        end
+    end
+
+    -- State variable that weapon is force-raised
+    if (wpn_out < 3 and detector_out and (not is_zoomed)) then 
+        raiseWpn = true
+    else
+        raiseWpn = false
+    end
+
+    dbg_print("raiseWpn = %s", raiseWpn)
+
+    -- ::raise::
+    game.actor_lower_weapon(raiseWpn)
 end
 
 
