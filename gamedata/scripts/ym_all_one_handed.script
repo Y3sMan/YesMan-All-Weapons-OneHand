@@ -221,78 +221,11 @@ local function on_option_change()
     load_settings()
 end
 
---#region mod recoil
--- local function actor_on_weapon_before_fire(flags)
---     dbg_print("actor_on_weapon_before_fire")
---     if  (not RECOIL_DEBUFF)  then return end -- recoil debuff is not enabled
-
--- 	if not db.actor then return end
-
--- 	local wpn   = db.actor:active_item()
--- 	if not wpn then return end
-
--- 	if game.actor_weapon_lowered() == true then return end
-
---     local sec_p = ini_sys:r_string_ex(wpn:section(), "parent_section") or wpn:section()
-
-
---     -- if regular one-handed weapon (knife or pistol)
---     -- remove the recoil mod func
---     -- and stop
---     local wpn_cls = wpn:clsid()
---     dbg_print("wpn_cls = %s", wpn_cls)
---     if
---         (IsPistol(nil, wpn_cls) or
---             (IsWeapon(nil, wpn_cls) and wpn_cls == clsid.wpn_knife_s)) or
---         (IsBolt(nil, wpn_cls)) or
---         (wpn_out ~= 2) or     -- 2 and 3 are the only blacklist options with recoil debuffs
---         (wpn_out ~= 3)
---      then 
---         remove_modifier(mod_func)
---         IsModded = false
---         -- modded_wpns[sec_p] = nil 
---         return
---     end
-
---     -- local detector_out =  db.actor:active_detector() and true or false
---     -- dbg_print("active_detector = %s", detector_out)
-
-
---     -- if detector_out then 
---     --     -- if not modded_wpns[sec_p] then
---     --     if not IsModded then
---     --         add_modifier(mod_func)
---     --         IsModded = true 
---     --         -- modded_wpns[sec_p] = true
---     --     end
---     -- else
---     --     remove_modifier(mod_func)
---     --     IsModded = false
---     --     -- modded_wpns[sec_p] = nil
---     -- end
-
---     -- If recoil debuff is allowed and it's the current wpn needs to be debuffed
---     if modWpn then 
---         -- if debuff hasn't already been applied
---         if not IsModded then
---             add_modifier(mod_func)
---             IsModded = true
---         end
---     else
---         remove_modifier(mod_func)
---         IsModded = false
---     end
-
-
-
--- end
-
---#endregion
-
 
 -- TODO: disable hipfire but allow aiming with device
 -- TODO: mcm for many options
 -- FIX: weapon is out, taking detector out does not raise wpn
+-- TODO: per device config
 
 function on_detector_start(anm_table, item)
 	if not item then return end
