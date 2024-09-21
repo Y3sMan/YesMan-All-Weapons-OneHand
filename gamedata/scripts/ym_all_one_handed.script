@@ -52,15 +52,20 @@ wpn_kind_whitelist = {}
     mod_func is a simple function to add to Enhanced Recoil Gold, modding the recoil of ALL weapons, doesn't 
     matter which is out
 --]]
-local mod_func        = function(effect_power, wpn, wpn_fx)
-    dbg_print("mod func running")
-    return effect_power * 7
-end
 
 -- MCM options
-local RECOIL_DEBUFF = false
-local ALLOW_HIPFIRE = false
+local RECOIL_DEBUFF = true
+local ALLOW_HIPFIRE = true
 local ALLOW_ZOOM = true
+
+local mod_func_hipfire        = function(effect_power, wpn, wpn_fx)
+    dbg_print("mod func hipfire running")
+end
+
+local mod_func_ads        = function(effect_power, wpn, wpn_fx)
+    dbg_print("mod func ads running")
+    return effect_power * 3
+end
 
 -- State variables
 local is_zoomed = false -- player is ADS-ing
